@@ -69,17 +69,22 @@ def train_epoch(model, training_data, optimizer, device, smoothing):
         src_seq, src_pos, tgt_seq, tgt_pos = map(lambda x: x.to(device), batch)
         gold = tgt_seq[:, 1:]
 
-        # forward
-        optimizer.zero_grad()
-        pred = model(src_seq, src_pos, tgt_seq, tgt_pos)
-
-        # backward
-        loss, n_correct = cal_performance(pred, gold, smoothing=smoothing)
-        loss.backward()
-
-        # update parameters
-        optimizer.step_and_update_lr()
-
+        
+        with torch.autograd.profiler.profile() as prof:
+            with torch.autograd.profiler.record_function("forward"):
+                # forward
+                optimizer.zero_grad()
+                pred = model(src_seq, src_pos, tgt_seq, tgt_pos)
+        
+            with torch.autograd.profiler.record_function("backward"):
+                # backward
+                loss, n_correct = cal_performance(pred, gold, smoothing=smoothing)
+                loss.backward()
+        
+            with torch.autograd.profiler.record_function("update_param"):
+                # update parameters
+                optimizer.step_and_update_lr()
+        
         # note keeping
         total_loss += loss.item()
 
@@ -88,6 +93,9 @@ def train_epoch(model, training_data, optimizer, device, smoothing):
         n_word_total += n_word
         n_word_correct += n_correct
 
+        print(prof)
+
+        break
     loss_per_word = total_loss/n_word_total
     accuracy = n_word_correct/n_word_total
     return loss_per_word, accuracy
@@ -154,7 +162,7 @@ def train(model, training_data, validation_data, optimizer, device, opt):
               'elapse: {elapse:3.3f} min'.format(
                   ppl=math.exp(min(train_loss, 100)), accu=100*train_accu,
                   elapse=(time.time()-start)/60))
-
+        '''
         start = time.time()
         valid_loss, valid_accu = eval_epoch(model, validation_data, device)
         print('  - (Validation) ppl: {ppl: 8.5f}, accuracy: {accu:3.3f} %, '\
@@ -188,6 +196,7 @@ def train(model, training_data, validation_data, optimizer, device, opt):
                 log_vf.write('{epoch},{loss: 8.5f},{ppl: 8.5f},{accu:3.3f}\n'.format(
                     epoch=epoch_i, loss=valid_loss,
                     ppl=math.exp(min(valid_loss, 100)), accu=100*valid_accu))
+        '''
 
 def main():
     ''' Main function '''
