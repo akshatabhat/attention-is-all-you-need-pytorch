@@ -71,6 +71,7 @@ def train_epoch(model, training_data, optimizer, device, smoothing):
 
         
         with torch.autograd.profiler.profile(use_cuda=True) as prof:
+            model(src_seq, src_pos, tgt_seq, tgt_pos)
             with torch.autograd.profiler.record_function("forward"):
                 # forward
                 optimizer.zero_grad()
@@ -93,8 +94,7 @@ def train_epoch(model, training_data, optimizer, device, smoothing):
         n_word_total += n_word
         n_word_correct += n_correct
 
-        #print(prof.key_averages().table(sort_by="cuda_time_total"))
-        print(prof.key_averages().table())
+        print(prof.key_averages().table(row_limit=1000))
         break
     loss_per_word = total_loss/n_word_total
     accuracy = n_word_correct/n_word_total
